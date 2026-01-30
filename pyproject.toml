@@ -1,0 +1,33 @@
+[project]
+name = "startwars-api"
+version = "0.1.0"
+description = "Star Wars API built with FastAPI consuming SWAPI"
+readme = "README.md"
+requires-python = ">=3.11"
+
+dependencies = [
+  "fastapi[standard]>=0.128",
+  "uvicorn[standard]>=0.29",
+  "httpx>=0.27",
+  "pydantic>=2.6",
+	"pydantic-settings>=2.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio",
+  "ruff",
+  "black",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
