@@ -3,6 +3,19 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
+from enum import Enum
+
+
+class UserRole(str, Enum):
+    """User role enumeration."""
+    ADMIN = "admin"
+    USER = "user"
+
+
+class ForceAlignment(str, Enum):
+    """Force alignment enumeration."""
+    LIGHT = "light"
+    DARK = "dark"
 
 
 @dataclass
@@ -16,6 +29,8 @@ class User:
     full_name: Optional[str] = None
     is_active: bool = True
     is_superuser: bool = False
+    role: UserRole = UserRole.USER
+    alignment: Optional[ForceAlignment] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 

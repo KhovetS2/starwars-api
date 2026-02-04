@@ -1,6 +1,6 @@
 """Species router module."""
 
-from typing import Optional
+from typing import Optional, List, Any, Dict
 from fastapi import APIRouter, HTTPException, status, Query
 
 from app.application.usecases.get_species import GetSpeciesUseCase, GetSpeciesByIdUseCase
@@ -11,19 +11,73 @@ from app.schemas.species import SpeciesResponse, SpeciesListResponse
 router = APIRouter(prefix="/species", tags=["Species"])
 
 
+def filter_species(
+    species_list: List[Dict[str, Any]],
+    name: Optional[str] = None,
+    classification: Optional[str] = None,
+    language: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Filter species based on criteria."""
+    result = species_list
+    
+    if name:
+        result = [s for s in result if name.lower() in s.get("name", "").lower()]
+    
+    if classification:
+        result = [s for s in result if classification.lower() in s.get("classification", "").lower()]
+    
+    if language:
+        result = [s for s in result if language.lower() in s.get("language", "").lower()]
+    
+    return result
+
+
+async def fetch_all_species(use_case: GetSpeciesUseCase, search: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Fetch all species from SWAPI (handles pagination)."""
+    all_species = []
+    page = 1
+    
+    while True:
+        data = await use_case.execute(search=search, page=page)
+        results = data.get("results", [])
+        all_species.extend(results)
+        
+        if data.get("next") is None:
+            break
+        page += 1
+    
+    return all_species
+
+
 @router.get(
     "/",
     response_model=SpeciesListResponse,
     summary="Get all species",
-    description="Retrieve a list of all Star Wars species with optional search filter.",
+    description="Retrieve a list of all Star Wars species with optional filters.",
 )
 async def get_all_species(
-    search: Optional[str] = Query(None, description="Search by name"),
-    page: Optional[int] = Query(None, ge=1, description="Page number"),
+    name: Optional[str] = Query(None, description="Filter by name (partial match)"),
+    classification: Optional[str] = Query(None, description="Filter by classification (partial match, e.g. 'mammal', 'reptile')"),
+    language: Optional[str] = Query(None, description="Filter by language (partial match)"),
+    page: Optional[int] = Query(None, ge=1, description="Page number (ignored if classification/language filters are active)"),
 ):
-    """Get all species from SWAPI."""
+    """Get all species from SWAPI with optional filters."""
     use_case = GetSpeciesUseCase()
-    result = await use_case.execute(search=search, page=page)
+    
+    # If classification or language filters are active, fetch all pages
+    if classification or language:
+        all_species = await fetch_all_species(use_case, search=name)
+        filtered = filter_species(all_species, name=name, classification=classification, language=language)
+        
+        return {
+            "count": len(filtered),
+            "next": None,
+            "previous": None,
+            "results": filtered,
+        }
+    
+    # Otherwise, use standard pagination from SWAPI
+    result = await use_case.execute(search=name, page=page)
     return result
 
 

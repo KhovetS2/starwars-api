@@ -5,7 +5,7 @@ from typing import List, Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.domain.entities.user import User, RefreshToken
+from app.domain.entities.user import User, RefreshToken, UserRole, ForceAlignment
 from app.domain.repositories.user_repository import (
     UserRepositoryInterface,
     RefreshTokenRepositoryInterface,
@@ -22,6 +22,9 @@ class UserRepository(UserRepositoryInterface):
 
     def _user_from_doc(self, doc: dict) -> User:
         """Convert MongoDB document to User entity."""
+        role_str = doc.get("role", "user")
+        alignment_str = doc.get("alignment")
+        
         return User(
             id=str(doc["_id"]),
             username=doc["username"],
@@ -30,6 +33,8 @@ class UserRepository(UserRepositoryInterface):
             full_name=doc.get("full_name"),
             is_active=doc.get("is_active", True),
             is_superuser=doc.get("is_superuser", False),
+            role=UserRole(role_str) if role_str else UserRole.USER,
+            alignment=ForceAlignment(alignment_str) if alignment_str else None,
             created_at=doc.get("created_at", datetime.utcnow()),
             updated_at=doc.get("updated_at"),
         )
@@ -43,6 +48,8 @@ class UserRepository(UserRepositoryInterface):
             "full_name": user.full_name,
             "is_active": user.is_active,
             "is_superuser": user.is_superuser,
+            "role": user.role.value if user.role else "user",
+            "alignment": user.alignment.value if user.alignment else None,
             "created_at": user.created_at,
             "updated_at": user.updated_at,
         }

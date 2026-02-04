@@ -6,6 +6,20 @@ API RESTful construída em **Python + FastAPI**, consumindo dados da **SWAPI (ht
 
 ## 🚀 Como Executar
 
+### ⚙️ Configuração Inicial
+
+Antes de executar, configure as variáveis de ambiente:
+
+```bash
+# Copie o arquivo de exemplo
+cp .env.example .env
+
+# Edite as configurações (opcional)
+# nano .env
+```
+
+> ⚠️ **Importante:** Em produção, altere o `JWT_SECRET_KEY` para um valor seguro!
+
 ### Opção 1: Docker Compose (Recomendado)
 
 ```bash
@@ -116,21 +130,47 @@ curl -X POST "http://localhost:8000/api/v1/auth/token" \
 
 ### 👤 Usuários
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| `POST` | `/api/v1/users` | Criar novo usuário | ❌ |
-| `GET` | `/api/v1/users` | Listar todos os usuários | ✅ |
-| `GET` | `/api/v1/users/me` | Obter usuário atual | ✅ |
-| `GET` | `/api/v1/users/{id}` | Obter usuário por ID | ✅ |
-| `PATCH` | `/api/v1/users/{id}` | Atualizar usuário | ✅ |
-| `DELETE` | `/api/v1/users/{id}` | Deletar usuário | ✅ |
+| Método | Endpoint | Descrição | Auth | Scope |
+|--------|----------|-----------|------|-------|
+| `POST` | `/api/v1/users` | Criar novo usuário (comum) | ❌ | - |
+| `POST` | `/api/v1/users/admin` | Criar usuário administrador | ✅ | `users:admin` |
+| `GET` | `/api/v1/users` | Listar todos os usuários | ✅ | `users:read` |
+| `GET` | `/api/v1/users/me` | Obter usuário atual | ✅ | `users:read` |
+| `GET` | `/api/v1/users/{id}` | Obter usuário por ID | ✅ | `users:read` |
+| `PATCH` | `/api/v1/users/{id}` | Atualizar usuário | ✅ | `users:write` |
+| `DELETE` | `/api/v1/users/{id}` | Deletar usuário | ✅ | `users:delete` |
+
+**OAuth2 Scopes:**
+| Scope | Descrição |
+|-------|-----------|
+| `users:read` | Leitura de informações de usuários |
+| `users:write` | Modificação de informações de usuários |
+| `users:delete` | Deleção de usuários |
+| `users:admin` | Administração de usuários (criação de admins) |
+
+> **Nota:** Scopes são automaticamente atribuídos ao token com base no papel do usuário:
+> - Usuários comuns: `users:read`, `users:write`
+> - Administradores: todos os scopes
+
+**Campos do Usuário:**
+- `alignment`: Obrigatório. Define o lado da Força (`light` ou `dark`)
+- `role`: Papel do usuário (`user` ou `admin`). Administradores só podem ser criados por outros admins.
 
 **Exemplo de Criação de Usuário:**
 ```bash
 curl -X POST "http://localhost:8000/api/v1/users" \
   -H "Content-Type: application/json" \
-  -d '{"username": "luke", "email": "luke@jedi.com", "password": "force123"}'
+  -d '{"username": "luke", "email": "luke@jedi.com", "password": "force123", "alignment": "light"}'
 ```
+
+**Exemplo de Criação de Admin (requer token de admin):**
+```bash
+curl -X POST "http://localhost:8000/api/v1/users/admin" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin_token>" \
+  -d '{"username": "vader", "email": "vader@sith.com", "password": "darkside", "alignment": "dark"}'
+```
+
 
 ---
 
@@ -138,16 +178,28 @@ curl -X POST "http://localhost:8000/api/v1/users" \
 
 | Método | Endpoint | Descrição | Filtros |
 |--------|----------|-----------|---------|
-| `GET` | `/api/v1/films` | Listar todos os filmes | `search`, `page` |
+| `GET` | `/api/v1/films` | Listar todos os filmes | `title`, `director_name`, `producer_name`, `character_name`, `page` |
 | `GET` | `/api/v1/films/{id}` | Obter filme por ID | - |
+
+**Filtros Disponíveis:**
+- `title`: Filtrar por título (match parcial)
+- `director_name`: Filtrar por nome do diretor (match parcial)
+- `producer_name`: Filtrar por nome do produtor (match parcial)
+- `character_name`: Filtrar por nome do personagem presente no filme (match parcial)
 
 **Exemplo:**
 ```bash
 # Listar filmes
 curl "http://localhost:8000/api/v1/films"
 
-# Buscar por título
-curl "http://localhost:8000/api/v1/films?search=hope"
+# Filtrar por diretor
+curl "http://localhost:8000/api/v1/films?director_name=Lucas"
+
+# Filtrar por produtor
+curl "http://localhost:8000/api/v1/films?producer_name=Kurtz"
+
+# Filtrar por personagem (pelo nome)
+curl "http://localhost:8000/api/v1/films?character_name=Luke"
 
 # Obter filme específico
 curl "http://localhost:8000/api/v1/films/1"
@@ -161,13 +213,24 @@ curl "http://localhost:8000/api/v1/films/1"
 
 | Método | Endpoint | Descrição | Filtros |
 |--------|----------|-----------|---------|
-| `GET` | `/api/v1/people` | Listar todos os personagens | `search`, `page` |
+| `GET` | `/api/v1/people` | Listar todos os personagens | `name`, `gender`, `specie`, `page` |
 | `GET` | `/api/v1/people/{id}` | Obter personagem por ID | - |
+
+**Filtros Disponíveis:**
+- `name`: Filtrar por nome (match parcial)
+- `gender`: Filtrar por gênero (`male`, `female`, `n/a`, `hermaphrodite`)
+- `specie`: Filtrar por nome da espécie (ex: `Human`, `Droid`)
 
 **Exemplo:**
 ```bash
 # Buscar por nome
-curl "http://localhost:8000/api/v1/people?search=luke"
+curl "http://localhost:8000/api/v1/people?name=luke"
+
+# Filtrar por gênero
+curl "http://localhost:8000/api/v1/people?gender=female"
+
+# Filtrar por espécie
+curl "http://localhost:8000/api/v1/people?specie=Droid"
 ```
 
 **Campos retornados:** `id`, `name`, `height`, `mass`, `hair_color`, `skin_color`, `eye_color`, `birth_year`, `gender`, `homeworld`, `films`, `species`, `vehicles`, `starships`
@@ -178,12 +241,19 @@ curl "http://localhost:8000/api/v1/people?search=luke"
 
 | Método | Endpoint | Descrição | Filtros |
 |--------|----------|-----------|---------|
-| `GET` | `/api/v1/planets` | Listar todos os planetas | `search`, `page` |
+| `GET` | `/api/v1/planets` | Listar todos os planetas | `name`, `climate`, `terrain`, `page` |
 | `GET` | `/api/v1/planets/{id}` | Obter planeta por ID | - |
+
+**Filtros Disponíveis:**
+- `name`: Filtrar por nome (match parcial)
+- `climate`: Filtrar por clima (match parcial, ex: `arid`, `temperate`)
+- `terrain`: Filtrar por terreno (match parcial, ex: `desert`, `mountains`)
 
 **Exemplo:**
 ```bash
-curl "http://localhost:8000/api/v1/planets?search=tatooine"
+curl "http://localhost:8000/api/v1/planets?name=tatooine"
+curl "http://localhost:8000/api/v1/planets?climate=arid"
+curl "http://localhost:8000/api/v1/planets?terrain=desert"
 ```
 
 **Campos retornados:** `id`, `name`, `rotation_period`, `orbital_period`, `diameter`, `climate`, `gravity`, `terrain`, `surface_water`, `population`, `residents`, `films`
@@ -194,8 +264,20 @@ curl "http://localhost:8000/api/v1/planets?search=tatooine"
 
 | Método | Endpoint | Descrição | Filtros |
 |--------|----------|-----------|---------|
-| `GET` | `/api/v1/species` | Listar todas as espécies | `search`, `page` |
+| `GET` | `/api/v1/species` | Listar todas as espécies | `name`, `classification`, `language`, `page` |
 | `GET` | `/api/v1/species/{id}` | Obter espécie por ID | - |
+
+**Filtros Disponíveis:**
+- `name`: Filtrar por nome (match parcial)
+- `classification`: Filtrar por classificação (match parcial, ex: `mammal`, `reptile`)
+- `language`: Filtrar por idioma (match parcial)
+
+**Exemplo:**
+```bash
+curl "http://localhost:8000/api/v1/species?name=Human"
+curl "http://localhost:8000/api/v1/species?classification=mammal"
+curl "http://localhost:8000/api/v1/species?language=Galactic"
+```
 
 **Campos retornados:** `id`, `name`, `classification`, `designation`, `average_height`, `skin_colors`, `hair_colors`, `eye_colors`, `average_lifespan`, `homeworld`, `language`, `people`, `films`
 
@@ -205,8 +287,21 @@ curl "http://localhost:8000/api/v1/planets?search=tatooine"
 
 | Método | Endpoint | Descrição | Filtros |
 |--------|----------|-----------|---------|
-| `GET` | `/api/v1/starships` | Listar todas as naves | `search`, `page` |
+| `GET` | `/api/v1/starships` | Listar todas as naves | `name`, `model`, `manufacturer`, `starship_class`, `page` |
 | `GET` | `/api/v1/starships/{id}` | Obter nave por ID | - |
+
+**Filtros Disponíveis:**
+- `name`: Filtrar por nome (match parcial)
+- `model`: Filtrar por modelo (match parcial)
+- `manufacturer`: Filtrar por fabricante (match parcial)
+- `starship_class`: Filtrar por classe da nave (match parcial)
+
+**Exemplo:**
+```bash
+curl "http://localhost:8000/api/v1/starships?name=Falcon"
+curl "http://localhost:8000/api/v1/starships?manufacturer=Corellian"
+curl "http://localhost:8000/api/v1/starships?starship_class=corvette"
+```
 
 **Campos retornados:** `id`, `name`, `model`, `manufacturer`, `cost_in_credits`, `length`, `max_atmosphering_speed`, `crew`, `passengers`, `cargo_capacity`, `consumables`, `hyperdrive_rating`, `MGLT`, `starship_class`, `pilots`, `films`
 
@@ -216,8 +311,21 @@ curl "http://localhost:8000/api/v1/planets?search=tatooine"
 
 | Método | Endpoint | Descrição | Filtros |
 |--------|----------|-----------|---------|
-| `GET` | `/api/v1/vehicles` | Listar todos os veículos | `search`, `page` |
+| `GET` | `/api/v1/vehicles` | Listar todos os veículos | `name`, `model`, `manufacturer`, `vehicle_class`, `page` |
 | `GET` | `/api/v1/vehicles/{id}` | Obter veículo por ID | - |
+
+**Filtros Disponíveis:**
+- `name`: Filtrar por nome (match parcial)
+- `model`: Filtrar por modelo (match parcial)
+- `manufacturer`: Filtrar por fabricante (match parcial)
+- `vehicle_class`: Filtrar por classe do veículo (match parcial)
+
+**Exemplo:**
+```bash
+curl "http://localhost:8000/api/v1/vehicles?name=speeder"
+curl "http://localhost:8000/api/v1/vehicles?manufacturer=Incom"
+curl "http://localhost:8000/api/v1/vehicles?vehicle_class=wheeled"
+```
 
 **Campos retornados:** `id`, `name`, `model`, `manufacturer`, `cost_in_credits`, `length`, `max_atmosphering_speed`, `crew`, `passengers`, `cargo_capacity`, `consumables`, `vehicle_class`, `pilots`, `films`
 

@@ -10,7 +10,7 @@ from app.application.usecases.user_usecases import (
     UpdateUserUseCase,
     DeleteUserUseCase,
 )
-from app.domain.entities.user import User
+from app.domain.entities.user import User, UserRole, ForceAlignment
 from app.domain.errors import NotFoundError, DuplicateError
 
 
@@ -32,6 +32,8 @@ class TestCreateUserUseCase:
             full_name="New User",
             is_active=True,
             is_superuser=False,
+            role=UserRole.USER,
+            alignment=ForceAlignment.LIGHT,
             created_at=datetime.utcnow(),
         )
 
@@ -43,11 +45,13 @@ class TestCreateUserUseCase:
             username="newuser",
             email="new@example.com",
             password="password123",
+            alignment=ForceAlignment.LIGHT,
             full_name="New User",
         )
 
         assert result.username == "newuser"
         assert result.email == "new@example.com"
+        assert result.alignment == ForceAlignment.LIGHT
         mock_auth_service.hash_password.assert_called_once_with("password123")
 
     @pytest.mark.asyncio
@@ -67,6 +71,7 @@ class TestCreateUserUseCase:
                 username="testuser",
                 email="new@example.com",
                 password="password123",
+                alignment=ForceAlignment.DARK,
             )
 
         assert "username" in str(exc_info.value.message)

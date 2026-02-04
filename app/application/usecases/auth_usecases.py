@@ -8,7 +8,7 @@ from app.infrastructure.repositories.user_repository import (
     UserRepository,
     RefreshTokenRepository,
 )
-from app.application.service.auth_service import AuthService, get_auth_service
+from app.application.service.auth_service import AuthService, get_auth_service, get_user_scopes
 from app.schemas.auth import Token
 
 
@@ -42,10 +42,14 @@ class LoginUseCase:
         if not user.is_active:
             raise AuthenticationError("User account is disabled")
 
-        # Create access token
+        # Get user scopes based on role
+        scopes = get_user_scopes(user)
+
+        # Create access token with scopes
         access_token = self.auth_service.create_access_token(
             user_id=user.id,
             username=user.username,
+            scopes=scopes,
         )
 
         # Create refresh token
@@ -97,10 +101,14 @@ class RefreshTokenUseCase:
         # Revoke old refresh token
         await self.token_repository.revoke(refresh_token_value)
 
-        # Create new access token
+        # Get user scopes based on role
+        scopes = get_user_scopes(user)
+
+        # Create new access token with scopes
         access_token = self.auth_service.create_access_token(
             user_id=user.id,
             username=user.username,
+            scopes=scopes,
         )
 
         # Create new refresh token

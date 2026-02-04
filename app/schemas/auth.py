@@ -1,5 +1,6 @@
 """Auth schema module."""
 
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -14,8 +15,9 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Token data payload schema."""
 
-    user_id: str | None = None
-    username: str | None = None
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    scopes: List[str] = []
 
 
 class LoginRequest(BaseModel):

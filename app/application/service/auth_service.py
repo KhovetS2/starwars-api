@@ -1,19 +1,44 @@
 """Authentication service module."""
 
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import List, Optional
 import secrets
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
-from app.domain.entities.user import User, RefreshToken
+from app.domain.entities.user import User, RefreshToken, UserRole
 from app.schemas.auth import TokenData
 
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# OAuth2 Scopes definition
+SCOPES = {
+    "users:read": "Read user information",
+    "users:write": "Modify user information",
+    "users:delete": "Delete users",
+    "users:admin": "Administer users (create admins)",
+}
+
+
+def get_user_scopes(user: User) -> List[str]:
+    """Get scopes for a user based on their role."""
+    # All authenticated users get read access to their own info
+    scopes = ["users:read"]
+    
+    # Active users can modify themselves
+    if user.is_active:
+        scopes.append("users:write")
+    
+    # Admins/superusers get all scopes
+    if user.is_superuser or user.role == UserRole.ADMIN:
+        scopes.extend(["users:delete", "users:admin"])
+    
+    return scopes
 
 
 class AuthService:
@@ -32,9 +57,13 @@ class AuthService:
         return pwd_context.hash(password)
 
     def create_access_token(
-        self, user_id: str, username: str, expires_delta: Optional[timedelta] = None
+        self, 
+        user_id: str, 
+        username: str, 
+        scopes: List[str] = None,
+        expires_delta: Optional[timedelta] = None
     ) -> str:
-        """Create a JWT access token."""
+        """Create a JWT access token with scopes."""
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
@@ -45,6 +74,7 @@ class AuthService:
         to_encode = {
             "sub": user_id,
             "username": username,
+            "scopes": scopes or [],
             "exp": expire,
             "type": "access",
         }
@@ -81,11 +111,12 @@ class AuthService:
             user_id: str = payload.get("sub")
             username: str = payload.get("username")
             token_type: str = payload.get("type")
+            scopes: List[str] = payload.get("scopes", [])
 
             if user_id is None or token_type != "access":
                 return None
 
-            return TokenData(user_id=user_id, username=username)
+            return TokenData(user_id=user_id, username=username, scopes=scopes)
         except JWTError:
             return None
 
