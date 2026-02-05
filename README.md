@@ -102,6 +102,116 @@ Após iniciar a API, acesse:
 
 ---
 
+## ☁️ Deploy no GCP (Cloud Functions + API Gateway)
+
+### Arquitetura na Nuvem
+
+```mermaid
+flowchart TB
+    subgraph "Google Cloud Platform"
+        AG[API Gateway]
+        CF[Cloud Function<br/>Gen 2 - Python 3.11]
+        SM[Secret Manager]
+    end
+    
+    MA[(MongoDB Atlas)]
+    SWAPI[SWAPI<br/>swapi.dev]
+    
+    U[Cliente] --> AG
+    AG --> CF
+    CF --> MA
+    CF --> SM
+    CF --> SWAPI
+```
+
+### Pré-requisitos
+
+1. **gcloud CLI** instalado ([instruções](https://cloud.google.com/sdk/docs/install))
+2. **Projeto GCP** criado e faturamento habilitado
+3. **MongoDB Atlas** configurado (ou outro MongoDB na cloud)
+
+### Passo 1: Configurar Ambiente GCP
+
+```bash
+# Autenticar no GCP
+gcloud auth login
+gcloud config set project SEU_PROJETO_ID
+
+# Habilitar APIs necessárias
+gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable apigateway.googleapis.com
+gcloud services enable run.googleapis.com
+gcloud services enable secretmanager.googleapis.com
+```
+
+### Passo 2: Configurar Secrets
+
+```bash
+# Criar secret para JWT (substitua pela sua chave)
+echo -n "sua-chave-jwt-segura-aqui" | \
+  gcloud secrets create JWT_SECRET_KEY --data-file=-
+
+# Verificar
+gcloud secrets list
+```
+
+### Passo 3: Deploy da Cloud Function
+
+```bash
+# Na raiz do projeto
+gcloud functions deploy starwars-api \
+  --gen2 \
+  --runtime=python311 \
+  --region=us-central1 \
+  --source=. \
+  --entry-point=starwars_api \
+  --trigger-http \
+  --allow-unauthenticated \
+  --memory=512MB \
+  --timeout=60s \
+  --set-env-vars="MONGODB_URL=mongodb+srv://USER:PASS@cluster.mongodb.net/starwars_db,JWT_SECRET_KEY=projects/SEU_PROJETO/secrets/JWT_SECRET_KEY/versions/latest"
+```
+
+> ⚠️ **Substitua:**
+> - `SEU_PROJETO_ID` pelo ID do seu projeto GCP
+> - `USER:PASS@cluster.mongodb.net` pela sua string de conexão MongoDB Atlas
+
+### Passo 4: Testar o Deploy
+
+```bash
+# Obter URL da função
+FUNCTION_URL=$(gcloud functions describe starwars-api \
+  --gen2 --region=us-central1 \
+  --format='value(serviceConfig.uri)')
+
+# Testar endpoints
+curl "$FUNCTION_URL/health"
+curl "$FUNCTION_URL/api/v1/films"
+curl "$FUNCTION_URL/api/v1/people?name=luke"
+```
+
+### Passo 5 (Opcional): Configurar API Gateway
+
+Para adicionar rate limiting, autenticação por API Key e um domínio customizado:
+
+```bash
+# Criar configuração da API (api-config.yaml)
+# Criar gateway
+gcloud api-gateway gateways create starwars-gateway \
+  --api=starwars-api \
+  --api-config=starwars-config \
+  --location=us-central1
+```
+
+### Variáveis de Ambiente (GCP)
+
+| Variável | Descrição |
+|----------|-----------|
+| `MONGODB_URL` | String de conexão MongoDB Atlas |
+| `JWT_SECRET_KEY` | Chave secreta para JWT (usar Secret Manager) |
+
+---
+
 ## 🔌 API — Documentação de Rotas
 
 ### 🔐 Autenticação

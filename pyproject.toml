@@ -13,7 +13,10 @@ dependencies = [
   "pydantic-settings>=2.1",
   "motor>=3.3",
   "python-jose[cryptography]>=3.3",
-  "passlib[bcrypt]>=1.7",
+  "passlib>=1.7",
+  "bcrypt>=4.0,<4.1",  # Pinned for passlib compatibility
+  # GCP Cloud Functions
+  "functions-framework>=3.5",
 ]
 
 [project.optional-dependencies]
