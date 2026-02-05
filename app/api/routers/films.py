@@ -1,6 +1,6 @@
 """Films router module."""
 
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Literal
 import httpx
 
 from fastapi import APIRouter, HTTPException, status, Query
@@ -9,12 +9,16 @@ from app.application.usecases.get_films import GetFilmsUseCase, GetFilmByIdUseCa
 from app.domain.errors import NotFoundError
 from app.schemas.film import FilmResponse, FilmListResponse
 from app.core.config import get_settings
+from app.api.utils.sorting import sort_results
 
 
 router = APIRouter(prefix="/films", tags=["Films"])
 
 # Cache for character URL -> name mapping
 _character_cache: Dict[str, str] = {}
+
+# Fields that should be sorted as numbers
+NUMERIC_FIELDS = ["episode_id"]
 
 
 async def get_character_name(character_url: str) -> str:
@@ -82,6 +86,8 @@ async def get_all_films(
     producer_name: Optional[str] = Query(None, description="Filter by producer name (partial match)"),
     character_name: Optional[str] = Query(None, description="Filter by character name present in film (partial match)"),
     page: Optional[int] = Query(None, ge=1, description="Page number"),
+    sort_by: Optional[Literal["title", "episode_id", "release_date", "director"]] = Query(None, description="Field to sort by"),
+    sort_order: Literal["asc", "desc"] = Query("asc", description="Sort order: 'asc' or 'desc'"),
 ):
     """Get all films from SWAPI with optional filters."""
     use_case = GetFilmsUseCase()
@@ -98,11 +104,14 @@ async def get_all_films(
         character_name=character_name,
     )
     
+    # Apply sorting
+    sorted_results = sort_results(filtered, sort_by, sort_order, NUMERIC_FIELDS)
+    
     return {
-        "count": len(filtered),
+        "count": len(sorted_results),
         "next": None,
         "previous": None,
-        "results": filtered,
+        "results": sorted_results,
     }
 
 

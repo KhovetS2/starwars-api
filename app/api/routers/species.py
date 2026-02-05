@@ -1,14 +1,18 @@
 """Species router module."""
 
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Literal
 from fastapi import APIRouter, HTTPException, status, Query
 
 from app.application.usecases.get_species import GetSpeciesUseCase, GetSpeciesByIdUseCase
 from app.domain.errors import NotFoundError
 from app.schemas.species import SpeciesResponse, SpeciesListResponse
+from app.api.utils.sorting import sort_results
 
 
 router = APIRouter(prefix="/species", tags=["Species"])
+
+# Fields that should be sorted as numbers
+NUMERIC_FIELDS = ["average_height", "average_lifespan"]
 
 
 def filter_species(
@@ -60,20 +64,23 @@ async def get_all_species(
     classification: Optional[str] = Query(None, description="Filter by classification (partial match, e.g. 'mammal', 'reptile')"),
     language: Optional[str] = Query(None, description="Filter by language (partial match)"),
     page: Optional[int] = Query(None, ge=1, description="Page number (ignored if classification/language filters are active)"),
+    sort_by: Optional[Literal["name", "classification", "language", "average_height", "average_lifespan"]] = Query(None, description="Field to sort by"),
+    sort_order: Literal["asc", "desc"] = Query("asc", description="Sort order: 'asc' or 'desc'"),
 ):
     """Get all species from SWAPI with optional filters."""
     use_case = GetSpeciesUseCase()
     
-    # If classification or language filters are active, fetch all pages
-    if classification or language:
+    # If classification, language filters, or sorting is active, fetch all pages
+    if classification or language or sort_by:
         all_species = await fetch_all_species(use_case, search=name)
         filtered = filter_species(all_species, name=name, classification=classification, language=language)
+        sorted_results = sort_results(filtered, sort_by, sort_order, NUMERIC_FIELDS)
         
         return {
-            "count": len(filtered),
+            "count": len(sorted_results),
             "next": None,
             "previous": None,
-            "results": filtered,
+            "results": sorted_results,
         }
     
     # Otherwise, use standard pagination from SWAPI

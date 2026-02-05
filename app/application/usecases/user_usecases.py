@@ -125,9 +125,17 @@ class GetAllUsersUseCase:
         """Initialize with repository."""
         self.repository = repository
 
-    async def execute(self, skip: int = 0, limit: int = 100) -> tuple[List[User], int]:
-        """Get all users with pagination."""
-        users = await self.repository.get_all(skip=skip, limit=limit)
+    async def execute(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ) -> tuple[List[User], int]:
+        """Get all users with pagination and sorting."""
+        users = await self.repository.get_all(
+            skip=skip, limit=limit, sort_by=sort_by, sort_order=sort_order
+        )
         count = await self.repository.count()
         return users, count
 

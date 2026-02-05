@@ -1,14 +1,18 @@
 """Planets router module."""
 
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Literal
 from fastapi import APIRouter, HTTPException, status, Query
 
 from app.application.usecases.get_planets import GetPlanetsUseCase, GetPlanetByIdUseCase
 from app.domain.errors import NotFoundError
 from app.schemas.planet import PlanetResponse, PlanetListResponse
+from app.api.utils.sorting import sort_results
 
 
 router = APIRouter(prefix="/planets", tags=["Planets"])
+
+# Fields that should be sorted as numbers
+NUMERIC_FIELDS = ["diameter", "population", "rotation_period", "orbital_period"]
 
 
 def filter_planets(
@@ -60,20 +64,23 @@ async def get_all_planets(
     climate: Optional[str] = Query(None, description="Filter by climate (partial match)"),
     terrain: Optional[str] = Query(None, description="Filter by terrain (partial match)"),
     page: Optional[int] = Query(None, ge=1, description="Page number (ignored if climate/terrain filters are active)"),
+    sort_by: Optional[Literal["name", "diameter", "population", "rotation_period", "orbital_period"]] = Query(None, description="Field to sort by"),
+    sort_order: Literal["asc", "desc"] = Query("asc", description="Sort order: 'asc' or 'desc'"),
 ):
     """Get all planets from SWAPI with optional filters."""
     use_case = GetPlanetsUseCase()
     
-    # If climate or terrain filters are active, fetch all pages
-    if climate or terrain:
+    # If climate, terrain filters, or sorting is active, fetch all pages
+    if climate or terrain or sort_by:
         all_planets = await fetch_all_planets(use_case, search=name)
         filtered = filter_planets(all_planets, name=name, climate=climate, terrain=terrain)
+        sorted_results = sort_results(filtered, sort_by, sort_order, NUMERIC_FIELDS)
         
         return {
-            "count": len(filtered),
+            "count": len(sorted_results),
             "next": None,
             "previous": None,
-            "results": filtered,
+            "results": sorted_results,
         }
     
     # Otherwise, use standard pagination from SWAPI

@@ -174,6 +174,45 @@ curl -X POST "http://localhost:8000/api/v1/users/admin" \
 
 ---
 
+### 🔄 Ordenação
+
+Todas as rotas GET que retornam listas suportam ordenação através dos parâmetros:
+
+| Parâmetro | Descrição | Valores |
+|-----------|-----------|---------|
+| `sort_by` | Campo para ordenar | Varia por recurso (ver tabela abaixo) |
+| `sort_order` | Direção da ordenação | `asc` (crescente), `desc` (decrescente) |
+
+**Campos de Ordenação por Recurso:**
+
+| Recurso | Campos Disponíveis | Padrão |
+|---------|-------------------|--------|
+| Films | `title`, `episode_id`, `release_date`, `director` | - |
+| People | `name`, `height`, `mass`, `birth_year` | - |
+| Planets | `name`, `diameter`, `population`, `rotation_period`, `orbital_period` | - |
+| Species | `name`, `classification`, `language`, `average_height`, `average_lifespan` | - |
+| Starships | `name`, `model`, `cost_in_credits`, `length`, `crew`, `passengers` | - |
+| Vehicles | `name`, `model`, `cost_in_credits`, `length`, `crew`, `passengers` | - |
+| Users | `username`, `email`, `created_at` | `created_at desc` |
+| Messages | `created_at` | `created_at desc` |
+
+**Exemplos:**
+```bash
+# Filmes ordenados por episódio crescente
+curl "http://localhost:8000/api/v1/films?sort_by=episode_id&sort_order=asc"
+
+# Personagens ordenados por altura decrescente
+curl "http://localhost:8000/api/v1/people?sort_by=height&sort_order=desc"
+
+# Usuários ordenados por nome crescente
+curl "http://localhost:8000/api/v1/users?sort_by=username&sort_order=asc" \
+  -H "Authorization: Bearer <token>"
+```
+
+> 💡 **Nota:** Quando a ordenação é ativada, os dados são buscados de todas as páginas antes de ordenar, garantindo resultados consistentes.
+
+---
+
 ### 🎬 Filmes
 
 | Método | Endpoint | Descrição | Filtros |
@@ -331,6 +370,116 @@ curl "http://localhost:8000/api/v1/vehicles?vehicle_class=wheeled"
 
 ---
 
+### 🕵️ Mini-Game: Mensagens Criptografadas
+
+Um sistema de espionagem onde Resistência (Light) e Império (Dark) trocam mensagens secretas e tentam interceptar comunicações inimigas.
+
+#### Conceito do Jogo
+
+- **Criar mensagem**: Sua mensagem é salva visível para aliados e criptografada para inimigos
+- **Ver mensagens aliadas**: Veja todas as mensagens do seu lado da Força
+- **Interceptar**: Capture uma mensagem aleatória do lado inimigo (criptografada)
+- **Decifrar**: Tente revelar o conteúdo — a cada tentativa, 1/6 a 4/6 das letras são reveladas
+
+#### Rotas
+
+| Método | Endpoint | Descrição | Auth |
+|--------|----------|-----------|------|
+| `POST` | `/api/v1/messages` | Criar mensagem criptografada | ✅ |
+| `GET` | `/api/v1/messages` | Ver mensagens do seu lado | ✅ |
+| `POST` | `/api/v1/messages/intercept` | Interceptar mensagem inimiga aleatória | ✅ |
+| `POST` | `/api/v1/messages/{id}/decrypt` | Tentar decifrar mensagem | ✅ |
+
+**Filtros de Ordenação (GET /messages):**
+- `sort_by`: Campo para ordenar (`created_at`)
+- `sort_order`: Direção da ordenação (`asc` ou `desc`, padrão: `desc`)
+
+#### Exemplos de Uso
+
+**1. Criar mensagem (usuário Light):**
+```bash
+curl -X POST "http://localhost:8000/api/v1/messages" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "A base secreta está em Hoth"}'
+```
+
+**Resposta:**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "author_id": "user_id_here",
+  "text": "A base secreta está em Hoth",
+  "alignment": "light",
+  "created_at": "2024-01-01T12:00:00"
+}
+```
+
+**2. Ver mensagens do seu lado:**
+```bash
+curl "http://localhost:8000/api/v1/messages" \
+  -H "Authorization: Bearer <token>"
+```
+
+**3. Interceptar mensagem inimiga (usuário Dark interceptando Light):**
+```bash
+curl -X POST "http://localhost:8000/api/v1/messages/intercept" \
+  -H "Authorization: Bearer <dark_token>"
+```
+
+**Resposta:**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "encrypted_text": "Z ozfv fvdivgz vfgz vo Slgs",
+  "alignment": "light",
+  "created_at": "2024-01-01T12:00:00"
+}
+```
+
+**4. Tentar decifrar:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/messages/507f1f77bcf86cd799439011/decrypt" \
+  -H "Authorization: Bearer <dark_token>"
+```
+
+**Resposta:**
+```json
+{
+  "partial_text": "_ b_s_ _ecr_t_ _s_á __ H__h",
+  "is_complete": false
+}
+```
+
+> 💡 **Dica:** Cada tentativa de decifrar revela entre 1/6 e 4/6 das letras aleatoriamente. Continue tentando até revelar a mensagem completa!
+
+#### Diagrama de Fluxo
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário (Light)
+    participant API as API
+    participant DB as MongoDB
+
+    Note over U,DB: Criar Mensagem
+    U->>API: POST /messages {text}
+    API->>DB: Salva em ally_messages (light)
+    API->>DB: Salva criptografada em enemy_messages (light)
+    API->>U: MessageResponse
+
+    Note over U,DB: Interceptar (usuário Dark)
+    U->>API: POST /messages/intercept
+    API->>DB: Random de enemy_messages onde alignment=light
+    API->>U: EncryptedMessageResponse
+
+    Note over U,DB: Decifrar
+    U->>API: POST /messages/{id}/decrypt
+    API->>API: Revela 1/6 a 4/6 das letras
+    API->>U: DecryptAttemptResponse
+```
+
+---
+
 ## ⚙️ Variáveis de Ambiente
 
 | Variável | Padrão | Descrição |
@@ -397,6 +546,55 @@ test/
 ---
 
 ## 🧭 Diagramas (SVG)
+
+<details>
+<summary><strong>Rotas — Usuários (criar usuário)</strong></summary>
+
+![Rotas — Usuários (criar usuário)](docs/diagrams/Diagrama%20de%20rotas%20user%20post.svg)
+
+</details>
+
+<details>
+<summary><strong>Rotas — Usuários (criar admin)</strong></summary>
+
+![Rotas — Usuários (criar admin)](docs/diagrams/Diagrama%20de%20rotas%20user%20post%20admin%20.svg)
+
+</details>
+
+<details>
+<summary><strong>Rotas — Usuários (lista)</strong></summary>
+
+![Rotas — Usuários (lista)](docs/diagrams/Diagrama%20de%20rotas%20user%20get.svg)
+
+</details>
+
+<details>
+<summary><strong>Rotas — Usuários (usuário atual)</strong></summary>
+
+![Rotas — Usuários (usuário atual)](docs/diagrams/Diagrama%20de%20rotas%20user%20get%20me.svg)
+
+</details>
+
+<details>
+<summary><strong>Rotas — Usuários (por id)</strong></summary>
+
+![Rotas — Usuários (por id)](docs/diagrams/Diagrama%20de%20rotas%20user%20get%20by%20id.svg)
+
+</details>
+
+<details>
+<summary><strong>Rotas — Usuários (atualizar)</strong></summary>
+
+![Rotas — Usuários (atualizar)](docs/diagrams/Diagrama%20de%20rotas%20user%20patch%20by%20id.svg)
+
+</details>
+
+<details>
+<summary><strong>Rotas — Usuários (deletar)</strong></summary>
+
+![Rotas — Usuários (deletar)](docs/diagrams/Diagrama%20de%20rotas%20user%20delete%20by%20id.svg)
+
+</details>
 
 <details>
 <summary><strong>Rotas — Filmes (lista)</strong></summary>

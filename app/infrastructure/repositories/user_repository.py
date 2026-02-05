@@ -83,9 +83,16 @@ class UserRepository(UserRepositoryInterface):
         doc = await self.collection.find_one({"email": email})
         return self._user_from_doc(doc) if doc else None
 
-    async def get_all(self, skip: int = 0, limit: int = 100) -> List[User]:
-        """Get all users with pagination."""
-        cursor = self.collection.find().skip(skip).limit(limit)
+    async def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ) -> List[User]:
+        """Get all users with pagination and sorting."""
+        direction = -1 if sort_order == "desc" else 1
+        cursor = self.collection.find().sort(sort_by, direction).skip(skip).limit(limit)
         users = []
         async for doc in cursor:
             users.append(self._user_from_doc(doc))

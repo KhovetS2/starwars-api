@@ -15,6 +15,7 @@ from app.api.routers import (
     vehicles_router,
     auth_router,
     users_router,
+    messages_router,
 )
 
 
@@ -46,6 +47,7 @@ app.include_router(starships_router, prefix="/api/v1")
 app.include_router(vehicles_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(messages_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["Health"])

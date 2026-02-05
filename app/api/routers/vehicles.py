@@ -1,14 +1,18 @@
 """Vehicles router module."""
 
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Literal
 from fastapi import APIRouter, HTTPException, status, Query
 
 from app.application.usecases.get_vehicles import GetVehiclesUseCase, GetVehicleByIdUseCase
 from app.domain.errors import NotFoundError
 from app.schemas.vehicle import VehicleResponse, VehicleListResponse
+from app.api.utils.sorting import sort_results
 
 
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
+
+# Fields that should be sorted as numbers
+NUMERIC_FIELDS = ["cost_in_credits", "length", "crew", "passengers", "cargo_capacity"]
 
 
 def filter_vehicles(
@@ -65,20 +69,23 @@ async def get_all_vehicles(
     manufacturer: Optional[str] = Query(None, description="Filter by manufacturer (partial match)"),
     vehicle_class: Optional[str] = Query(None, description="Filter by vehicle class (partial match)"),
     page: Optional[int] = Query(None, ge=1, description="Page number (ignored if model/manufacturer/class filters are active)"),
+    sort_by: Optional[Literal["name", "model", "cost_in_credits", "length", "crew", "passengers"]] = Query(None, description="Field to sort by"),
+    sort_order: Literal["asc", "desc"] = Query("asc", description="Sort order: 'asc' or 'desc'"),
 ):
     """Get all vehicles from SWAPI with optional filters."""
     use_case = GetVehiclesUseCase()
     
-    # If model, manufacturer, or vehicle_class filters are active, fetch all pages
-    if model or manufacturer or vehicle_class:
+    # If model, manufacturer, vehicle_class filters, or sorting is active, fetch all pages
+    if model or manufacturer or vehicle_class or sort_by:
         all_vehicles = await fetch_all_vehicles(use_case, search=name)
         filtered = filter_vehicles(all_vehicles, name=name, model=model, manufacturer=manufacturer, vehicle_class=vehicle_class)
+        sorted_results = sort_results(filtered, sort_by, sort_order, NUMERIC_FIELDS)
         
         return {
-            "count": len(filtered),
+            "count": len(sorted_results),
             "next": None,
             "previous": None,
-            "results": filtered,
+            "results": sorted_results,
         }
     
     # Otherwise, use standard pagination from SWAPI

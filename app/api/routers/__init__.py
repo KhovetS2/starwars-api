@@ -8,6 +8,7 @@ from .starships import router as starships_router
 from .vehicles import router as vehicles_router
 from .auth import router as auth_router
 from .user import router as users_router
+from .messages import router as messages_router
 
 __all__ = [
     "films_router",
@@ -18,4 +19,6 @@ __all__ = [
     "vehicles_router",
     "auth_router",
     "users_router",
+    "messages_router",
 ]
+

@@ -1,6 +1,6 @@
 """Users router module."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Security
 
@@ -110,10 +110,14 @@ async def get_all_users(
     user_repository: Annotated[UserRepository, Depends(get_user_repository)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+    sort_by: Literal["username", "email", "created_at"] = Query("created_at", description="Field to sort by"),
+    sort_order: Literal["asc", "desc"] = Query("desc", description="Sort order: 'asc' or 'desc'"),
 ):
-    """Get all users with pagination."""
+    """Get all users with pagination and sorting."""
     use_case = GetAllUsersUseCase(repository=user_repository)
-    users, count = await use_case.execute(skip=skip, limit=limit)
+    users, count = await use_case.execute(
+        skip=skip, limit=limit, sort_by=sort_by, sort_order=sort_order
+    )
     
     return UserListResponse(
         count=count,
