@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+*.egg-info
+
+# Testes (não necessários em produção)
+test/
+
+# Documentação
+docs/
+*.md
+!README.md
+
+# Ambiente local
+.env
+.env.example
+
+# Docker (não usado no Cloud Functions)
+Dockerfile
+docker-compose.yml
+
+# Ferramentas de desenvolvimento
+Makefile
+.ruff_cache
+.mypy_cache
