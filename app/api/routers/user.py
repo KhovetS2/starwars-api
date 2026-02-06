@@ -192,6 +192,7 @@ async def update_user(
             password=user_data.password,
             full_name=user_data.full_name,
             is_active=user_data.is_active,
+            alignment=user_data.alignment,
         )
         return user_to_response(user)
     except NotFoundError as e:

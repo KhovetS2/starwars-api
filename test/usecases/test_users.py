@@ -139,6 +139,7 @@ class TestUpdateUserUseCase:
             full_name="Updated Name",
             is_active=True,
             is_superuser=False,
+            alignment=sample_user.alignment,
             created_at=sample_user.created_at,
             updated_at=datetime.utcnow(),
         )
@@ -156,6 +157,38 @@ class TestUpdateUserUseCase:
 
         assert result.username == "updateduser"
         assert result.full_name == "Updated Name"
+
+    @pytest.mark.asyncio
+    async def test_update_user_alignment(
+        self, sample_user, mock_user_repository, mock_auth_service
+    ):
+        """Test updating user alignment (changing side of the Force)."""
+        mock_user_repository.get_by_id.return_value = sample_user
+        
+        updated_user = User(
+            id=sample_user.id,
+            username=sample_user.username,
+            email=sample_user.email,
+            hashed_password=sample_user.hashed_password,
+            full_name=sample_user.full_name,
+            is_active=True,
+            is_superuser=False,
+            alignment=ForceAlignment.DARK,  # Changed from LIGHT to DARK
+            created_at=sample_user.created_at,
+            updated_at=datetime.utcnow(),
+        )
+        mock_user_repository.update.return_value = updated_user
+
+        use_case = UpdateUserUseCase(
+            repository=mock_user_repository,
+            auth_service=mock_auth_service,
+        )
+        result = await use_case.execute(
+            user_id=sample_user.id,
+            alignment=ForceAlignment.DARK,
+        )
+
+        assert result.alignment == ForceAlignment.DARK
 
 
 class TestDeleteUserUseCase:

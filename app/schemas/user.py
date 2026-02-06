@@ -46,6 +46,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=8)
     full_name: Optional[str] = None
     is_active: Optional[bool] = None
+    alignment: Optional[ForceAlignment] = Field(None, description="Change your side of the Force")
 
 
 class UserResponse(BaseModel):
