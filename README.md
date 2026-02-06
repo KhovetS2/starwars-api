@@ -263,8 +263,10 @@ curl -X POST "http://localhost:8000/api/v1/auth/token" \
 > - Administradores: todos os scopes
 
 **Campos do Usuário:**
-- `alignment`: Obrigatório. Define o lado da Força (`light` ou `dark`)
+- `alignment`: Obrigatório na criação. Define o lado da Força (`light` ou `dark`). Pode ser alterado via PATCH.
 - `role`: Papel do usuário (`user` ou `admin`). Administradores só podem ser criados por outros admins.
+
+> **Nota:** Usuários podem mudar de lado da Força via PATCH, assim como Anakin → Vader ou Kylo Ren → Ben Solo.
 
 **Exemplo de Criação de Usuário:**
 ```bash

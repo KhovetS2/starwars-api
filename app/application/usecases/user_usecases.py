@@ -160,6 +160,7 @@ class UpdateUserUseCase:
         password: Optional[str] = None,
         full_name: Optional[str] = None,
         is_active: Optional[bool] = None,
+        alignment: Optional[ForceAlignment] = None,
     ) -> User:
         """Update a user."""
         # Check user exists
@@ -192,6 +193,9 @@ class UpdateUserUseCase:
 
         if is_active is not None:
             update_data["is_active"] = is_active
+
+        if alignment is not None:
+            update_data["alignment"] = alignment
 
         if not update_data:
             return existing
